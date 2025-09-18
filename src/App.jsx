@@ -266,7 +266,7 @@ export default function ForwardExchangeRatesCalculator() {
                 title="Implied Forward Exchange Rate"
                 value={model.forwardRate.toFixed(4)}
                 subtitle="the no-arbitrage forward rate using continuous compounding"
-                description={`Formula: F = S × e^(r_foreign - r_domestic)`}
+                description="Formula: F = S × e^(r_foreign - r_domestic)"
                 isValid={model.isValid}
               />
 
@@ -326,6 +326,28 @@ export default function ForwardExchangeRatesCalculator() {
                 </table>
               </div>
 
+              {/* Custom Legend with mixed colors for accessibility */}
+              <div className="mb-2 text-center">
+                <span className="text-black font-medium">Exchange Rates: </span>
+                <span className="font-semibold text-green-600">
+                  Spot {inputs.spotRate.toFixed(4)} (green)
+                </span>
+                <span className="text-black mx-2">, </span>
+                <span className="font-semibold text-blue-600">
+                  Forward {model.forwardRate.toFixed(4)} (blue)
+                </span>
+              </div>
+
+              {/* Interest Rate Legend - positioned right below custom legend */}
+              <div className="mb-4 text-center text-sm">
+                <span className="font-semibold text-purple-600 mr-4">
+                  Domestic Rate: {inputs.domesticRate.toFixed(3)}%
+                </span>
+                <span className="font-semibold text-orange-600">
+                  Foreign Rate: {inputs.foreignRate.toFixed(3)}%
+                </span>
+              </div>
+
               {/* Chart container with proper ARIA labeling */}
               <div className="h-96" 
                    role="img" 
@@ -338,7 +360,7 @@ export default function ForwardExchangeRatesCalculator() {
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart
                     data={model.chartData}
-                    margin={{ top: 60, right: 120, left: 20, bottom: 50 }}
+                    margin={{ top: 40, right: 120, left: 20, bottom: 50 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
@@ -369,42 +391,11 @@ export default function ForwardExchangeRatesCalculator() {
                       labelFormatter={(label) => `Time: ${label}`}
                     />
                     
-                    {/* Consolidated Legend with dynamic values */}
-                    <Legend 
-                      verticalAlign="top" 
-                      height={56}
-                      payload={[
-                        {
-                          value: `Spot Rate: ${inputs.spotRate.toFixed(4)}`,
-                          type: 'rect',
-                          color: '#059669',
-                          dataKey: 'spotRate'
-                        },
-                        {
-                          value: `Forward Rate: ${model.forwardRate.toFixed(4)}`,
-                          type: 'rect',
-                          color: '#2563eb',
-                          dataKey: 'forwardRate'
-                        },
-                        {
-                          value: `Domestic Rate: ${inputs.domesticRate.toFixed(3)}%`,
-                          type: 'line',
-                          color: '#7c3aed',
-                          dataKey: 'domesticRate'
-                        },
-                        {
-                          value: `Foreign Rate: ${inputs.foreignRate.toFixed(3)}%`,
-                          type: 'line',
-                          color: '#ea580c',
-                          dataKey: 'foreignRate'
-                        }
-                      ]}
-                    />
+                    {/* No legend in chart - we have custom legends above */}
                     
                     <Bar 
                       yAxisId="left"
                       dataKey="exchangeRate" 
-                      name="Exchange Rate"
                       fill="#2563eb"
                       barSize={60}
                       label={<CustomBarLabel />}
@@ -420,7 +411,6 @@ export default function ForwardExchangeRatesCalculator() {
                       stroke="#7c3aed" 
                       strokeWidth={4}
                       dot={{ fill: '#7c3aed', strokeWidth: 2, r: 6 }}
-                      name="Domestic Rate"
                       connectNulls={false}
                     />
                     
@@ -431,7 +421,6 @@ export default function ForwardExchangeRatesCalculator() {
                       stroke="#ea580c" 
                       strokeWidth={4}
                       dot={{ fill: '#ea580c', strokeWidth: 2, r: 6 }}
-                      name="Foreign Rate"
                       connectNulls={false}
                     />
                   </ComposedChart>
