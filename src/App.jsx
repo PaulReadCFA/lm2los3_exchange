@@ -94,9 +94,9 @@ function calculateForwardExchangeRate({ spotRate, domesticRate, foreignRate }) {
   const r_f = foreignRate / 100;
   const initialInvestment = 1000;
   
-  // Calculate implied forward exchange rate using covered interest rate parity
-  // F = S × (1 + r_f) / (1 + r_d)
-  const forwardRate = spotRate * (1 + r_f) / (1 + r_d);
+  // Calculate implied forward exchange rate using covered interest rate parity with continuous compounding
+  // F = S × e^(r_f - r_d)
+  const forwardRate = spotRate * Math.exp(r_f - r_d);
   
   // Strategy 1: Domestic investment
   const domesticEndingValue = initialInvestment * (1 + r_d);
@@ -188,7 +188,6 @@ export default function ForwardExchangeRatesCalculator() {
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto px-4 py-6">
-      
 
         <Card title="Forward Exchange Rate Calculator">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -266,8 +265,8 @@ export default function ForwardExchangeRatesCalculator() {
               <ResultCard
                 title="Implied Forward Exchange Rate"
                 value={model.forwardRate.toFixed(4)}
-                subtitle="the no-arbitrage forward rate for currency conversion"
-                description={`Formula: F = S × (1 + r_foreign) ÷ (1 + r_domestic)`}
+                subtitle="the no-arbitrage forward rate using continuous compounding"
+                description={`Formula: F = S × e^(r_foreign - r_domestic)`}
                 isValid={model.isValid}
               />
 
@@ -286,25 +285,6 @@ export default function ForwardExchangeRatesCalculator() {
                     Final value: ${model.domesticEquivalent.toFixed(2)}
                   </div>
                 </div>
-              </div>
-
-              <div className="mb-4 text-sm text-gray-600 flex items-center gap-6 flex-wrap">
-                <span className="inline-flex items-center">
-                  <span className="w-4 h-4 bg-emerald-600 mr-2 rounded"></span>
-                  Spot Rate: {inputs.spotRate.toFixed(4)}
-                </span>
-                <span className="inline-flex items-center">
-                  <span className="w-4 h-4 bg-blue-600 mr-2 rounded"></span>
-                  Forward Rate: {model.forwardRate.toFixed(4)}
-                </span>
-                <span className="inline-flex items-center">
-                  <span className="w-3 h-3 border-2 border-purple-600 mr-2"></span>
-                  Domestic Rate: {inputs.domesticRate.toFixed(3)}%
-                </span>
-                <span className="inline-flex items-center">
-                  <span className="w-3 h-3 border-2 border-orange-600 mr-2"></span>
-                  Foreign Rate: {inputs.foreignRate.toFixed(3)}%
-                </span>
               </div>
 
               {/* Screen reader accessible data table */}
@@ -358,7 +338,7 @@ export default function ForwardExchangeRatesCalculator() {
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart
                     data={model.chartData}
-                    margin={{ top: 40, right: 120, left: 20, bottom: 50 }}
+                    margin={{ top: 60, right: 120, left: 20, bottom: 50 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
@@ -388,9 +368,37 @@ export default function ForwardExchangeRatesCalculator() {
                       }}
                       labelFormatter={(label) => `Time: ${label}`}
                     />
+                    
+                    {/* Consolidated Legend with dynamic values */}
                     <Legend 
                       verticalAlign="top" 
-                      height={36}
+                      height={56}
+                      payload={[
+                        {
+                          value: `Spot Rate: ${inputs.spotRate.toFixed(4)}`,
+                          type: 'rect',
+                          color: '#059669',
+                          dataKey: 'spotRate'
+                        },
+                        {
+                          value: `Forward Rate: ${model.forwardRate.toFixed(4)}`,
+                          type: 'rect',
+                          color: '#2563eb',
+                          dataKey: 'forwardRate'
+                        },
+                        {
+                          value: `Domestic Rate: ${inputs.domesticRate.toFixed(3)}%`,
+                          type: 'line',
+                          color: '#7c3aed',
+                          dataKey: 'domesticRate'
+                        },
+                        {
+                          value: `Foreign Rate: ${inputs.foreignRate.toFixed(3)}%`,
+                          type: 'line',
+                          color: '#ea580c',
+                          dataKey: 'foreignRate'
+                        }
+                      ]}
                     />
                     
                     <Bar 
@@ -430,20 +438,11 @@ export default function ForwardExchangeRatesCalculator() {
                 </ResponsiveContainer>
               </div>
 
-              {/* Interest Rate Labels positioned below chart */}
-              <div className="flex justify-center mt-2 text-sm gap-8">
-                <div className="text-purple-600 font-bold">
-                  Domestic Rate: {inputs.domesticRate.toFixed(3)}%
-                </div>
-                <div className="text-orange-600 font-bold">
-                  Foreign Rate: {inputs.foreignRate.toFixed(3)}%
-                </div>
-              </div>
-
               <div className="mt-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-700">
-                <strong>Covered Interest Rate Parity:</strong> The forward exchange rate ({model.forwardRate.toFixed(4)}) 
-                is determined by the interest rate differential between domestic ({inputs.domesticRate.toFixed(3)}%) and 
-                foreign ({inputs.foreignRate.toFixed(3)}%) currencies to prevent arbitrage opportunities.
+                <strong>Covered Interest Rate Parity (Continuous Compounding):</strong> The forward exchange rate ({model.forwardRate.toFixed(4)}) 
+                is determined by the interest rate differential between foreign ({inputs.foreignRate.toFixed(3)}%) and 
+                domestic ({inputs.domesticRate.toFixed(3)}%) currencies using continuous compounding to prevent arbitrage opportunities. 
+                The formula F = S × e^(r_foreign - r_domestic) assumes rates compound continuously over the investment horizon.
               </div>
             </>
           )}
