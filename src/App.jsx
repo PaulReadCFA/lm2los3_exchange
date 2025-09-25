@@ -12,7 +12,7 @@ import {
   Cell
 } from "recharts";
 
-// Custom label component for bars
+// Custom label component for bars (exchange rates)
 function CustomBarLabel(props) {
   const { x, y, width, height, value } = props;
   
@@ -43,12 +43,45 @@ function Card({ title, children, className = "" }) {
 }
 
 function FormField({ id, label, children, error, helpText, required = false }) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  
   return (
     <div className="flex flex-col">
-      <label htmlFor={id} className="font-medium text-gray-700 mb-1">
+      <label htmlFor={id} className="font-medium text-gray-700 mb-1 flex items-center">
         {label}
         {required && <span className="text-red-500 ml-1" aria-label="required">*</span>}
-        {helpText && <span className="text-gray-500 text-xs font-normal ml-2">({helpText})</span>}
+        {helpText && (
+          <div className="relative ml-2">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center w-4 h-4 text-gray-400 hover:text-gray-600 focus:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-full"
+              onMouseEnter={() => setShowTooltip(true)}
+              onMouseLeave={() => setShowTooltip(false)}
+              onFocus={() => setShowTooltip(true)}
+              onBlur={() => setShowTooltip(false)}
+              aria-describedby={`${id}-tooltip`}
+              aria-label="More information"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+              </svg>
+            </button>
+            
+            {showTooltip && (
+              <div
+                id={`${id}-tooltip`}
+                role="tooltip"
+                className="absolute left-6 top-0 z-10 w-64 p-2 text-xs text-white bg-gray-800 rounded shadow-lg"
+                style={{ transform: 'translateY(-50%)' }}
+              >
+                {helpText}
+                <div className="absolute left-0 top-1/2 transform -translate-x-1 -translate-y-1/2">
+                  <div className="w-2 h-2 bg-gray-800 rotate-45"></div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </label>
       {children}
       {error && (
@@ -146,6 +179,68 @@ export default function ForwardExchangeRatesCalculator() {
     domesticRate: 2.360,
     foreignRate: 2.430
   });
+  
+  // Custom label function with access to inputs - defined inside component
+  const CustomLineLabel = useCallback((props) => {
+    const { x, y, value, index } = props;
+    
+    if (!value || index !== 0) return null; // Show on first data point but offset to center
+    
+    // Handle edge case where rates are equal
+    if (Math.abs(inputs.domesticRate - inputs.foreignRate) < 0.01) {
+      // When rates are equal, show a single combined label
+      return (
+        <text
+          x={x + 100}
+          y={y}
+          textAnchor="middle"
+          fill="#000"
+          fontSize="11"
+          fontWeight="bold"
+        >
+          Interest Rate: {value.toFixed(3)}%
+        </text>
+      );
+    }
+    
+    // Compare against actual input values to determine which line is which
+    const isDomestic = Math.abs(value - inputs.domesticRate) < 0.01;
+    const isForeign = Math.abs(value - inputs.foreignRate) < 0.01;
+    
+    if (!isDomestic && !isForeign) return null; // Safety check
+    
+    const centerX = x + 100; // Offset towards center between bars
+    const labelY = isDomestic ? y + 35 : y - 25; // Domestic below its line, foreign above its line
+    const lineColor = isDomestic ? '#7c3aed' : '#ea580c'; // Match line colors
+    
+    return (
+      <g>
+        {/* Leader line from label to data point */}
+        <line
+          x1={centerX}
+          y1={labelY + (isDomestic ? -8 : 8)} // Start just above/below text
+          x2={x}
+          y2={y}
+          stroke={lineColor}
+          strokeWidth={1}
+          opacity={0.7}
+          strokeDasharray="2,2"
+        />
+        
+        {/* Label text */}
+        <text
+          x={centerX}
+          y={labelY}
+          textAnchor="middle"
+          fill="#000"
+          fontSize="11"
+          fontWeight="bold"
+        >
+          {isDomestic ? 'Domestic' : 'Foreign'}: {value.toFixed(3)}%
+        </text>
+      </g>
+    );
+  }, [inputs.domesticRate, inputs.foreignRate]);
   
   const validateInputs = useCallback((inputs) => {
     const errors = {};
@@ -266,7 +361,14 @@ export default function ForwardExchangeRatesCalculator() {
                 title="Implied Forward Exchange Rate"
                 value={model.forwardRate.toFixed(4)}
                 subtitle="the no-arbitrage forward rate using continuous compounding"
-                description="Formula: F = S × e^(r_foreign - r_domestic)"
+                description={
+                  <div>
+                    <div className="mb-1">Using Covered Interest Rate Parity:</div>
+                    <div className="font-mono text-base bg-white px-2 py-1 rounded border">
+                      F = S × e<sup>(r<sub>foreign</sub> - r<sub>domestic</sub>)</sup>
+                    </div>
+                  </div>
+                }
                 isValid={model.isValid}
               />
 
@@ -326,25 +428,26 @@ export default function ForwardExchangeRatesCalculator() {
                 </table>
               </div>
 
-              {/* Custom Legend with mixed colors for accessibility */}
+              {/* Custom Legend with clear rate type distinctions */}
               <div className="mb-2 text-center">
                 <span className="text-black font-medium">Exchange Rates: </span>
                 <span className="font-semibold text-green-600">
-                  Spot {inputs.spotRate.toFixed(4)} (green)
+                  Spot {inputs.spotRate.toFixed(4)}
                 </span>
                 <span className="text-black mx-2">, </span>
                 <span className="font-semibold text-blue-600">
-                  Forward {model.forwardRate.toFixed(4)} (blue)
+                  Forward {model.forwardRate.toFixed(4)}
                 </span>
               </div>
 
               {/* Interest Rate Legend - positioned right below custom legend */}
               <div className="mb-4 text-center text-sm">
+                <span className="text-black font-medium">Interest Rates: </span>
                 <span className="font-semibold text-purple-600 mr-4">
-                  Domestic Rate: {inputs.domesticRate.toFixed(3)}%
+                  Domestic {inputs.domesticRate.toFixed(3)}%
                 </span>
                 <span className="font-semibold text-orange-600">
-                  Foreign Rate: {inputs.foreignRate.toFixed(3)}%
+                  Foreign {inputs.foreignRate.toFixed(3)}%
                 </span>
               </div>
 
@@ -354,7 +457,7 @@ export default function ForwardExchangeRatesCalculator() {
                    aria-labelledby="chart-title" 
                    aria-describedby="chart-description">
                 <div className="text-center text-sm text-gray-600 mb-2 font-medium">
-                  Implied Forward Exchange Rates given Domestic & Foreign Interest Rate Levels
+                  Forward Exchange Rate Calculation with Interest Rate Differential Analysis
                 </div>
                 
                 <ResponsiveContainer width="100%" height="100%">
@@ -411,6 +514,7 @@ export default function ForwardExchangeRatesCalculator() {
                       stroke="#7c3aed" 
                       strokeWidth={4}
                       dot={{ fill: '#7c3aed', strokeWidth: 2, r: 6 }}
+                      label={<CustomLineLabel />}
                       connectNulls={false}
                     />
                     
@@ -421,17 +525,11 @@ export default function ForwardExchangeRatesCalculator() {
                       stroke="#ea580c" 
                       strokeWidth={4}
                       dot={{ fill: '#ea580c', strokeWidth: 2, r: 6 }}
+                      label={<CustomLineLabel />}
                       connectNulls={false}
                     />
                   </ComposedChart>
                 </ResponsiveContainer>
-              </div>
-
-              <div className="mt-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-700">
-                <strong>Covered Interest Rate Parity (Continuous Compounding):</strong> The forward exchange rate ({model.forwardRate.toFixed(4)}) 
-                is determined by the interest rate differential between foreign ({inputs.foreignRate.toFixed(3)}%) and 
-                domestic ({inputs.domesticRate.toFixed(3)}%) currencies using continuous compounding to prevent arbitrage opportunities. 
-                The formula F = S × e^(r_foreign - r_domestic) assumes rates compound continuously over the investment horizon.
               </div>
             </>
           )}
