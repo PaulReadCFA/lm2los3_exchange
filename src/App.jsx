@@ -11,6 +11,38 @@ import {
   Legend,
   Cell
 } from "recharts";
+const HelpTooltip = ({ id, text }) => {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <span className="relative inline-block ml-2">
+      <button
+        type="button"
+        className="w-4 h-4 rounded-full bg-gray-200 text-gray-700 text-xs font-bold 
+                   focus:outline-none focus:ring-2 focus:ring-blue-500"
+        aria-describedby={visible ? `${id}-help` : undefined}
+        aria-label="More information"
+        onMouseEnter={() => setVisible(true)}
+        onMouseLeave={() => setVisible(false)}
+        onFocus={() => setVisible(true)}
+        onBlur={() => setVisible(false)}
+      >
+        ?
+      </button>
+      {visible && (
+        <span
+          id={`${id}-help`}
+          role="tooltip"
+          className="absolute left-6 top-0 z-10 w-64 p-2 text-xs text-white bg-gray-800 rounded shadow-lg"
+        >
+          {text}
+        </span>
+      )}
+    </span>
+  );
+};
+
+
 
 // Custom label component for bars (exchange rates)
 function CustomBarLabel(props) {
@@ -43,45 +75,12 @@ function Card({ title, children, className = "" }) {
 }
 
 function FormField({ id, label, children, error, helpText, required = false }) {
-  const [showTooltip, setShowTooltip] = useState(false);
-  
   return (
     <div className="flex flex-col">
       <label htmlFor={id} className="font-medium text-gray-700 mb-1 flex items-center">
         {label}
         {required && <span className="text-red-500 ml-1" aria-label="required">*</span>}
-        {helpText && (
-          <div className="relative ml-2">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center w-4 h-4 text-gray-400 hover:text-gray-600 focus:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded-full"
-              onMouseEnter={() => setShowTooltip(true)}
-              onMouseLeave={() => setShowTooltip(false)}
-              onFocus={() => setShowTooltip(true)}
-              onBlur={() => setShowTooltip(false)}
-              aria-describedby={`${id}-tooltip`}
-              aria-label="More information"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-              </svg>
-            </button>
-            
-            {showTooltip && (
-              <div
-                id={`${id}-tooltip`}
-                role="tooltip"
-                className="absolute left-6 top-0 z-10 w-64 p-2 text-xs text-white bg-gray-800 rounded shadow-lg"
-                style={{ transform: 'translateY(-50%)' }}
-              >
-                {helpText}
-                <div className="absolute left-0 top-1/2 transform -translate-x-1 -translate-y-1/2">
-                  <div className="w-2 h-2 bg-gray-800 rotate-45"></div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        {helpText && <HelpTooltip id={id} text={helpText} />}
       </label>
       {children}
       {error && (
@@ -92,6 +91,7 @@ function FormField({ id, label, children, error, helpText, required = false }) {
     </div>
   );
 }
+
 
 function ValidationMessage({ errors }) {
   if (!errors || Object.keys(errors).length === 0) return null;
@@ -530,6 +530,13 @@ export default function ForwardExchangeRatesCalculator() {
                     />
                   </ComposedChart>
                 </ResponsiveContainer>
+              </div>
+
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-700">
+                <strong>Covered Interest Rate Parity (Continuous Compounding):</strong> The forward exchange rate ({model.forwardRate.toFixed(4)}) 
+                is calculated using the interest rate differential between the foreign currency ({inputs.foreignRate.toFixed(3)}%) and 
+                domestic currency ({inputs.domesticRate.toFixed(3)}%) markets. The formula assumes continuous compounding and prevents arbitrage opportunities 
+                by ensuring both investment strategies yield identical returns when currency risk is hedged.
               </div>
             </>
           )}
